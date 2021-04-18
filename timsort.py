@@ -1,5 +1,12 @@
-from typing import Iterable
+from typing import Iterable, TypeVar
+from timsort.binary_search import binary_search
 
 
-def timsort(arr: Iterable):
-  pass
+T = TypeVar('T')
+
+
+def timsort(unsorted: Iterable[T]) -> Iterable[T]:
+    if not unsorted or len(unsorted) < 1:
+        return unsorted
+
+    pass
