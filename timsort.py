@@ -1,5 +1,5 @@
 from typing import Iterable, TypeVar
-from timsort.binary_search import binary_search
+from src.binary_search import binary_search
 
 
 T = TypeVar('T')
