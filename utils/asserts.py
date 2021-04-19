@@ -1,7 +1,4 @@
-from typing import Iterable
-
-
-def assert_sorted(it: Iterable):
+def assert_sorted(it: list):
     """Asserts if the array is sorted at ascending order."""
 
     try:
@@ -15,7 +12,7 @@ def assert_sorted(it: Iterable):
         }
 
 
-def assert_has_all(it0: Iterable, it1: Iterable):
+def assert_has_all(it0: list, it1: list):
     """Asserts if it1 has all items that it0 have and have the same size."""
 
     for item0 in it0:
