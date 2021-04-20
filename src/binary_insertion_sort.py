@@ -33,7 +33,8 @@ def binary_insertion_sort(it: list[T], lo: int, hi: int, start: int) -> list[T]:
     """Sorts a array by searching the right place for every item.
 
     This is a worst case O(n^2) algorithm
-    But only uses O(log n) comparisons by finding the index with a binary search
+    But only uses O(log i) comparisons by finding the index with a binary
+    search, where `i` is the index of the element on the unordered array
     """
 
     if (start <= lo):
