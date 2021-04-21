@@ -16,7 +16,7 @@ def __binary_loc_search(it: list[T], item: T, low: int, high: int) -> int:
         # place item at low_item
         return low
 
-    mid = int((low + high) / 2)
+    mid = (low + high) // 2
 
     # stable part, that keeps the same elements at the same order
     # + economizes a recursion and shift :)
