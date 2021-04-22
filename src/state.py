@@ -25,7 +25,7 @@ def __tmp_len(n: int) -> int:
     Else the returned size will be `TMP_STORAGE_LEN`
     """
 
-    if len < 2 * TMP_STORAGE_LEN:
+    if n < 2 * TMP_STORAGE_LEN:
         return n // 2
     else:
         return TMP_STORAGE_LEN
