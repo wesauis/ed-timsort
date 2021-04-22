@@ -10,7 +10,7 @@ def count_run_and_make_asc(a: list[T], lo: int, hi: int) -> int:
 
     # end index of the run
     run_hi = lo + 1
-    if run_hi == hi:
+    if run_hi >= hi:
         return 1
 
     # is ascending if it[lo] <= it[lo + 1]
