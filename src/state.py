@@ -35,9 +35,10 @@ class TimsortState:
 
         # stack for runs
         # run is a piece of the array that is already sorted
-        self.stack_len: int = self.__stack_len(_len)
-        self.run_base: list[int] = [0] * self.stack_len
-        self.run_len: list[int] = [0] * self.stack_len
+        stack_size: int = self.__stack_len(_len)
+        self.stack_len = 0
+        self.run_base: list[int] = [0] * stack_size
+        self.run_len: list[int] = [0] * stack_size
 
         self.min_run: int = self.__min_run(_len)
 
