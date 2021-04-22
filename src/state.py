@@ -18,65 +18,6 @@ class ContractBroken(Exception):
         super("Comparison method violates its general contract!")
 
 
-def __tmp_len(n: int) -> int:
-    """Returns the recommended tmp array size for a array of size `n`.
-
-    If the `n` is too small, the size will be `n / 2`.
-    Else the returned size will be `TMP_STORAGE_LEN`
-    """
-
-    if n < 2 * TMP_STORAGE_LEN:
-        return n // 2
-    else:
-        return TMP_STORAGE_LEN
-
-
-def __stack_len(n: int) -> int:
-    """Returns the length for the run stack based on the length `n`
-    of the array."""
-
-    if n < 120:
-        return 5
-
-    if n < 1542:
-        return 10
-
-    if n < 119151:
-        return 24
-
-    return 49
-
-
-def __min_run(n: int) -> int:
-    """Returns the min run len `k` for a array of size `n`."""
-
-    # count how many bits are set to one before `n >= MIN_MERGE`
-    # each iteration the last bit of `n` is consumed
-    # parity = 1 if count is odd else 0
-    parity = 0
-    while n >= MIN_MERGE:
-        parity |= n & 1
-        n >>= 1
-
-    # adds the value remaining at `n` and the parity
-    # if `n` was a power of 2, will return `MIN_MERGE / 2`
-    # else will return a number `K`, `MIN_MERGE / 2 <= K <= MIN_MERGE`,
-    # such that `n / k` is close to, but strictly less than, an exact power of 2
-    return n + parity
-
-
-def __next_smallest_power(n: int):
-    """Returns the smallest power of 2 > `n`."""
-
-    return 2 ** ceil(log2(n))
-
-
-def __cp_arr(src: list[T], src_ptr: int, dst: list[T], dst_ptr: int, len: int):
-    """Copies from src into dst."""
-
-    dst[dst_ptr:dst_ptr+len] = src[src_ptr:src_ptr+len]
-
-
 class TimsortState:
     def __init__(self, a: list[T], _len: int):
         self.a = a
@@ -88,17 +29,76 @@ class TimsortState:
         self.min_galop: int = MIN_GALOP
 
         # temp storage for merges, may be increased if necessary
-        self.tmp_len: int = __tmp_len(_len)
+        self.tmp_len: int = self.__tmp_len(_len)
         self.tmp_base: int = 0
         self.tmp: list[T] = [None] * self.tmp_len
 
         # stack for runs
         # run is a piece of the array that is already sorted
-        self.stack_len: int = __stack_len(_len)
+        self.stack_len: int = self.__stack_len(_len)
         self.run_base: list[int] = [0] * self.stack_len
         self.run_len: list[int] = [0] * self.stack_len
 
-        self.min_run: int = __min_run(_len)
+        self.min_run: int = self.__min_run(_len)
+
+    @staticmethod
+    def __tmp_len(n: int) -> int:
+        """Returns the recommended tmp array size for a array of size `n`.
+
+        If the `n` is too small, the size will be `n / 2`.
+        Else the returned size will be `TMP_STORAGE_LEN`
+        """
+
+        if n < 2 * TMP_STORAGE_LEN:
+            return n // 2
+        else:
+            return TMP_STORAGE_LEN
+
+    @staticmethod
+    def __stack_len(n: int) -> int:
+        """Returns the length for the run stack based on the length `n`
+        of the array."""
+
+        if n < 120:
+            return 5
+
+        if n < 1542:
+            return 10
+
+        if n < 119151:
+            return 24
+
+        return 49
+
+    @staticmethod
+    def __min_run(n: int) -> int:
+        """Returns the min run len `k` for a array of size `n`."""
+
+        # count how many bits are set to one before `n >= MIN_MERGE`
+        # each iteration the last bit of `n` is consumed
+        # parity = 1 if count is odd else 0
+        parity = 0
+        while n >= MIN_MERGE:
+            parity |= n & 1
+            n >>= 1
+
+        # adds the value remaining at `n` and the parity
+        # if `n` was a power of 2, will return `MIN_MERGE / 2`
+        # else will return a number `K`, `MIN_MERGE / 2 <= K <= MIN_MERGE`,
+        # such that `n / k` is close to, but strictly less than, an exact power of 2
+        return n + parity
+
+    @staticmethod
+    def __next_smallest_power(n: int):
+        """Returns the smallest power of 2 > `n`."""
+
+        return 2 ** ceil(log2(n))
+
+    @staticmethod
+    def __cp_arr(src: list[T], src_ptr: int, dst: list[T], dst_ptr: int, len: int):
+        """Copies from src into dst."""
+
+        dst[dst_ptr:dst_ptr+len] = src[src_ptr:src_ptr+len]
 
     def push_run(self, base: int, len: int):
         self.run_base[self.stack_len] = base
@@ -195,7 +195,7 @@ class TimsortState:
         dst = base1  # cursor for run1 into a
 
         # copy run1 into tmp
-        __cp_arr(a, base1, tmp, cr1, len1)
+        self.__cp_arr(a, base1, tmp, cr1, len1)
 
         # move first item of run2
         a[dst] = a[cr2]
@@ -205,10 +205,10 @@ class TimsortState:
         # see if it was all
         len2 -= 1
         if len2 == 0:
-            __cp_arr(a, cr1, a, dst, len1)
+            self.__cp_arr(a, cr1, a, dst, len1)
             return
         if len1 == 1:
-            __cp_arr(a, cr2, a, dst, len2)
+            self.__cp_arr(a, cr2, a, dst, len2)
             a[dst + len2] = tmp[cr1]
             return
 
@@ -256,7 +256,7 @@ class TimsortState:
                 while True:
                     run1_wins = gallop_right(a[cr2], tmp, cr1, len1, 0)
                     if run1_wins != 0:
-                        __cp_arr(tmp, cr1, a, dst, run1_wins)
+                        self.__cp_arr(tmp, cr1, a, dst, run1_wins)
                         dst += run1_wins
                         cr1 += run1_wins
                         len1 -= run1_wins
@@ -273,7 +273,7 @@ class TimsortState:
 
                     run2_wins = gallop_left(tmp[cr1], a, cr2, len2, 0)
                     if run2_wins != 0:
-                        __cp_arr(a, cr2, a, dst, run2_wins)
+                        self.__cp_arr(a, cr2, a, dst, run2_wins)
                         dst += run2_wins
                         cr2 += run2_wins
                         len2 -= run2_wins
@@ -304,12 +304,12 @@ class TimsortState:
         self.min_galop = 1 if min_galop < 1 else min_galop
 
         if len1 == 1:
-            __cp_arr(a, cr1, a, dst, len2)
+            self.__cp_arr(a, cr1, a, dst, len2)
             a[dst + len2] = tmp[cr1]
         elif len1 == 0:
             raise ContractBroken()
         else:
-            __cp_arr(tmp, cr1, a, dst, len1)
+            self.__cp_arr(tmp, cr1, a, dst, len1)
 
     def merge_hi(self, base1: int, len1: int, base2: int, len2: int):
         # local ref
@@ -321,7 +321,7 @@ class TimsortState:
         dst = base2 + len2 - 1  # cursor for run2 into a
 
         # copy run2 into tmp
-        __cp_arr(a, base2, tmp, tmp_base, len2)
+        self.__cp_arr(a, base2, tmp, tmp_base, len2)
 
         # move last item of run2
         a[dst] = a[cr1]
@@ -331,10 +331,10 @@ class TimsortState:
         # see if it was all
         len1 -= 1
         if len1 == 0:
-            __cp_arr(tmp, tmp_base, a, dst - (len2 - 1), len2)
+            self.__cp_arr(tmp, tmp_base, a, dst - (len2 - 1), len2)
             return
         if len2 == 1:
-            __cp_arr(a, cr1 + 1, a, dst + 1, len1)
+            self.__cp_arr(a, cr1 + 1, a, dst + 1, len1)
             a[dst] = tmp[cr2]
             return
 
@@ -386,7 +386,7 @@ class TimsortState:
                         dst -= run1_wins
                         cr1 -= run1_wins
                         len1 -= run1_wins
-                        __cp_arr(a, cr1, a, dst + 1, run1_wins)
+                        self.__cp_arr(a, cr1, a, dst + 1, run1_wins)
                         if len1 == 0:
                             raise SuperBreak()
 
@@ -404,7 +404,7 @@ class TimsortState:
                         dst -= run2_wins
                         cr2 -= run2_wins
                         len2 -= run2_wins
-                        __cp_arr(tmp, cr2 + 1, a, dst + 1, run2_wins)
+                        self.__cp_arr(tmp, cr2 + 1, a, dst + 1, run2_wins)
                         if len2 <= 1:
                             raise SuperBreak()
 
@@ -434,12 +434,12 @@ class TimsortState:
         if len2 == 1:
             dst -= len1
             cr1 -= len1
-            __cp_arr(a, cr1 + 1, a, dst + 1, len1)
+            self.__cp_arr(a, cr1 + 1, a, dst + 1, len1)
             a[dst] = tmp[cr2]
         elif len2 == 0:
             raise ContractBroken()
         else:
-            __cp_arr(tmp, tmp_base, a, dst - (len2 - 1), len2)
+            self.__cp_arr(tmp, tmp_base, a, dst - (len2 - 1), len2)
 
     def ensure_tmp_capacity(self, min_capacity: int) -> list[T]:
         """Ensures that the external array tmp has at least the specified
@@ -448,7 +448,7 @@ class TimsortState:
 
         if self.tmp_len < min_capacity:
             new_len = min(
-                __next_smallest_power(min_capacity),
+                self.__next_smallest_power(min_capacity),
                 len(self.a) // 2)
 
             self.tmp = [None] * new_len
