@@ -6,13 +6,14 @@ from random import randint
 
 
 @params(
-    *(map(lambda: randarray(randint(48, 256), [None] * randint(3, 12))))
+    *(map(lambda _: randarray(randint(48, 256)), [None] * randint(3, 12)))
 )
 def test_is_sorting(to_sort: list[int]):
     sorted = timsort(to_sort)
 
     assert_sorted(sorted)
     assert_has_all(to_sort, sorted)
+
 
 @params(
     randarray(0),
