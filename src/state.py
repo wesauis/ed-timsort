@@ -8,6 +8,16 @@ from src.gallop import gallop_left, gallop_right
 T = TypeVar('T')
 
 
+class SuperBreak(Exception):
+    """The only break that you will ever need."""
+    pass
+
+
+class ContractBroken(Exception):
+    def __init__(self):
+        super("Comparison method violates its general contract!")
+
+
 def __tmp_len(n: int) -> int:
     """Returns the recommended tmp array size for a array of size `n`.
 
@@ -61,6 +71,12 @@ def __next_smallest_power(n: int):
     return 2 ** ceil(log2(n))
 
 
+def __cp_arr(src: list[T], src_ptr: int, dst: list[T], dst_ptr: int, len: int):
+    """Copies from src into dst."""
+
+    dst[dst_ptr:dst_ptr+len] = src[src_ptr:src_ptr+len]
+
+
 class TimsortState:
     def __init__(self, a: list[T], _len: int):
         self.a = a
@@ -99,6 +115,7 @@ class TimsortState:
             - https://hg.python.org/cpython/file/tip/Objects/listsort.txt#l330
         """
 
+        lens = self.run_len
         while self.stack_len > 1:
             pivot = self.stack_len - 2
 
@@ -107,15 +124,15 @@ class TimsortState:
             #     3+ runs on the stack and B <= C + D
             # or
             #     4+ runs on the stack and A <= C + B
-            if pivot > 0 and self.run_len[pivot - 1] <= self.run_len[pivot] + self.run_len[pivot + 1] or \
-               pivot > 1 and self.run_len[pivot - 2] <= self.run_len[pivot] + self.run_len[pivot - 1]:
+            if pivot > 0 and lens[pivot - 1] <= lens[pivot] + lens[pivot + 1] or \
+               pivot > 1 and lens[pivot - 2] <= lens[pivot] + lens[pivot - 1]:
 
                 # if B < D
-                if self.run_len[pivot - 1] < self.run_len[pivot + 1]:
+                if lens[pivot - 1] < lens[pivot + 1]:
                     pivot -= 1
 
             # else if C > B, no merges needed
-            elif pivot < 0 or self.run_len[pivot] > self.run_len[pivot + 1]:
+            elif pivot < 0 or lens[pivot] > lens[pivot + 1]:
                 break
 
             self.merge_at(pivot)
@@ -170,11 +187,259 @@ class TimsortState:
             self.merge_hi(base1, len1, base2, len2)
 
     def merge_lo(self, base1: int, len1: int, base2: int, len2: int):
-        # https://github.com/AdoptOpenJDK/openjdk-jdk11/blob/master/src/java.base/share/classes/java/util/TimSort.java#L685
-        pass
+        # local ref
+        a = self.a
+        tmp = self.ensure_tmp_capacity(len1)
+        cr1 = self.tmp_base  # cursor for run1 into tmp
+        cr2 = base2  # cursor for run2 into a
+        dst = base1  # cursor for run1 into a
+
+        # copy run1 into tmp
+        __cp_arr(a, base1, tmp, cr1, len1)
+
+        # move first item of run2
+        a[dst] = a[cr2]
+        dst += 1
+        cr2 += 1
+
+        # see if it was all
+        len2 -= 1
+        if len2 == 0:
+            __cp_arr(a, cr1, a, dst, len1)
+            return
+        if len1 == 1:
+            __cp_arr(a, cr2, a, dst, len2)
+            a[dst + len2] = tmp[cr1]
+            return
+
+        min_galop = self.min_galop
+
+        try:
+            while True:
+                run1_wins = 0
+                run2_wins = 0
+
+                # merge item by item until (if ever) a run wins consistently
+                while True:
+                    if a[cr2] < tmp[cr1]:
+                        a[dst] = a[cr2]
+                        dst += 1
+                        cr2 += 1
+
+                        run1_wins = 0
+                        run2_wins += 1
+
+                        len2 -= 1
+                        if len2 == 0:
+                            raise SuperBreak()
+
+                    else:
+                        a[dst] = tmp[cr1]
+                        dst += 1
+                        cr1 += 1
+
+                        run1_wins += 1
+                        run2_wins = 0
+
+                        len1 -= 1
+                        if len1 == 1:
+                            raise SuperBreak()
+
+                    # some run is winning
+                    if (run1_wins + run2_wins) >= min_galop:
+                        break
+
+                # some run is winning
+                # lets use gallop until we are still winning
+                # if we leave too fast will be harder to enter again
+                # else will be easyer
+                while True:
+                    run1_wins = gallop_right(a[cr2], tmp, cr1, len1, 0)
+                    if run1_wins != 0:
+                        __cp_arr(tmp, cr1, a, dst, run1_wins)
+                        dst += run1_wins
+                        cr1 += run1_wins
+                        len1 -= run1_wins
+                        if len1 <= 1:
+                            raise SuperBreak()
+
+                    a[dst] = a[cr2]
+                    dst += 1
+                    cr2 += 1
+
+                    len2 -= 1
+                    if len2 == 0:
+                        raise SuperBreak()
+
+                    run2_wins = gallop_left(tmp[cr1], a, cr2, len2, 0)
+                    if run2_wins != 0:
+                        __cp_arr(a, cr2, a, dst, run2_wins)
+                        dst += run2_wins
+                        cr2 += run2_wins
+                        len2 -= run2_wins
+                        if len2 == 0:
+                            raise SuperBreak()
+
+                    a[dst] = tmp[cr1]
+                    dst += 1
+                    cr1 += 1
+
+                    len1 -= 1
+                    if len1 == 1:
+                        raise SuperBreak()
+
+                    min_galop -= 1  # galop was a win, make it easyer to enter
+
+                    if run1_wins < MIN_GALOP or run2_wins < MIN_GALOP:
+                        break
+
+                if min_galop < 0:
+                    min_galop = 0
+                min_galop += 2  # penalize for leaving galloping mode
+
+        except SuperBreak:
+            # task ended
+            pass
+
+        self.min_galop = 1 if min_galop < 1 else min_galop
+
+        if len1 == 1:
+            __cp_arr(a, cr1, a, dst, len2)
+            a[dst + len2] = tmp[cr1]
+        elif len1 == 0:
+            raise ContractBroken()
+        else:
+            __cp_arr(tmp, cr1, a, dst, len1)
 
     def merge_hi(self, base1: int, len1: int, base2: int, len2: int):
-        pass
+        # local ref
+        a = self.a
+        tmp = self.ensure_tmp_capacity(len2)
+        tmp_base = self.tmp_base
+        cr1 = base1 + len1 - 1  # cursor for run1 into a
+        cr2 = tmp_base + len2 - 1  # cursor for run2 into tmp
+        dst = base2 + len2 - 1  # cursor for run2 into a
+
+        # copy run2 into tmp
+        __cp_arr(a, base2, tmp, tmp_base, len2)
+
+        # move last item of run2
+        a[dst] = a[cr1]
+        dst += 1
+        cr1 += 1
+
+        # see if it was all
+        len1 -= 1
+        if len1 == 0:
+            __cp_arr(tmp, tmp_base, a, dst - (len2 - 1), len2)
+            return
+        if len2 == 1:
+            __cp_arr(a, cr1 + 1, a, dst + 1, len1)
+            a[dst] = tmp[cr2]
+            return
+
+        min_galop = self.min_galop
+
+        try:
+            while True:
+                run1_wins = 0
+                run2_wins = 0
+
+                # merge item by item until (if ever) a run wins consistently
+                while True:
+                    if tmp[cr2] < a[cr1]:
+                        a[dst] = a[cr1]
+                        dst += 1
+                        cr1 += 1
+
+                        run1_wins += 1
+                        run2_wins = 0
+
+                        len1 -= 1
+                        if len1 == 0:
+                            raise SuperBreak()
+
+                    else:
+                        a[dst] = tmp[cr2]
+                        dst += 1
+                        cr2 += 1
+
+                        run1_wins = 0
+                        run2_wins += 1
+
+                        len2 -= 1
+                        if len2 == 1:
+                            raise SuperBreak()
+
+                    # some run is winning
+                    if (run1_wins + run2_wins) >= min_galop:
+                        break
+
+                # some run is winning
+                # lets use gallop until we are still winning
+                # if we leave too fast will be harder to enter again
+                # else will be easyer
+                while True:
+                    run1_wins = len1 - \
+                        gallop_right(tmp[cr2], a, base1, len1, len1 - 1)
+                    if run1_wins != 0:
+                        dst -= run1_wins
+                        cr1 -= run1_wins
+                        len1 -= run1_wins
+                        __cp_arr(a, cr1, a, dst + 1, run1_wins)
+                        if len1 == 0:
+                            raise SuperBreak()
+
+                    a[dst] = tmp[cr2]
+                    dst -= 1
+                    cr2 -= 1
+
+                    len2 -= 1
+                    if len2 == 1:
+                        raise SuperBreak()
+
+                    run2_wins = gallop_left(
+                        a[cr1], tmp, tmp_base, len2, len2 - 1)
+                    if run2_wins != 0:
+                        dst -= run2_wins
+                        cr2 -= run2_wins
+                        len2 -= run2_wins
+                        __cp_arr(tmp, cr2 + 1, a, dst + 1, run2_wins)
+                        if len2 <= 1:
+                            raise SuperBreak()
+
+                    a[dst] = tmp[cr1]
+                    dst -= 1
+                    cr1 -= 1
+
+                    len1 -= 1
+                    if len1 == 0:
+                        raise SuperBreak()
+
+                    min_galop -= 1  # galop was a win, make it easyer to enter
+
+                    if run1_wins < MIN_GALOP or run2_wins < MIN_GALOP:
+                        break
+
+                if min_galop < 0:
+                    min_galop = 0
+                min_galop += 2  # penalize for leaving galloping mode
+
+        except SuperBreak:
+            # task ended
+            pass
+
+        self.min_galop = 1 if min_galop < 1 else min_galop
+
+        if len2 == 1:
+            dst -= len1
+            cr1 -= len1
+            __cp_arr(a, cr1 + 1, a, dst + 1, len1)
+            a[dst] = tmp[cr2]
+        elif len2 == 0:
+            raise ContractBroken()
+        else:
+            __cp_arr(tmp, tmp_base, a, dst - (len2 - 1), len2)
 
     def ensure_tmp_capacity(self, min_capacity: int) -> list[T]:
         """Ensures that the external array tmp has at least the specified

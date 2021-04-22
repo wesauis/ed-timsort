@@ -18,11 +18,11 @@ def count_run_and_make_asc(a: list[T], lo: int, hi: int) -> int:
     run_hi += 1
 
     if is_ascending:
-        while run_hi < hi and a[lo] <= a[run_hi]:
+        while run_hi < hi and a[run_hi - 1] <= a[run_hi]:
             run_hi += 1
 
     else:
-        while run_hi < hi and a[lo] > a[run_hi]:
+        while run_hi < hi and a[run_hi - 1] > a[run_hi]:
             run_hi += 1
 
         # reverses the section
