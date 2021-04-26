@@ -37,6 +37,7 @@ def binary_insertion_sort(a: list[T], lo: int, hi: int, start: int) -> list[T]:
     search, where `i` is the index of the element on the unordered array
     """
 
+    assert lo <= start and start <= hi
     if (start <= lo):
         # ignores the first element because it is already sorted
         start = lo + 1
