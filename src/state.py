@@ -35,12 +35,10 @@ class TimsortState:
 
         # stack for runs
         # run is a piece of the array that is already sorted
-        stack_size: int = self.__stack_len(_len)
-        self.stack_len = 0
-        self.run_base: list[int] = [0] * stack_size
-        self.run_len: list[int] = [0] * stack_size
-
-        self.min_run: int = self.__min_run(_len)
+        self.stack_size = 0
+        stack_len: int = self.__stack_len(_len)
+        self.run_base: list[int] = [None] * stack_len
+        self.run_len: list[int] = [None] * stack_len
 
     @staticmethod
     def __tmp_len(n: int) -> int:
@@ -72,26 +70,6 @@ class TimsortState:
         return 49
 
     @staticmethod
-    def __min_run(n: int) -> int:
-        """Returns the min run len `k` for a array of size `n`."""
-
-        assert n > 0
-
-        # count how many bits are set to one before `n >= MIN_MERGE`
-        # each iteration the last bit of `n` is consumed
-        # parity = 1 if count is odd else 0
-        parity = 0
-        while n >= MIN_MERGE:
-            parity |= n & 1
-            n >>= 1
-
-        # adds the value remaining at `n` and the parity
-        # if `n` was a power of 2, will return `MIN_MERGE / 2`
-        # else will return a number `K`, `MIN_MERGE / 2 <= K <= MIN_MERGE`,
-        # such that `n / k` is close to, but strictly less than, an exact power of 2
-        return n + parity
-
-    @staticmethod
     def __next_smallest_power(n: int):
         """Returns the smallest power of 2 > `n`."""
 
@@ -104,9 +82,9 @@ class TimsortState:
         dst[dst_ptr:dst_ptr+len] = src[src_ptr:src_ptr+len]
 
     def push_run(self, base: int, len: int):
-        self.run_base[self.stack_len] = base
-        self.run_len[self.stack_len] = len
-        self.stack_len += 1
+        self.run_base[self.stack_size] = base
+        self.run_len[self.stack_size] = len
+        self.stack_size += 1
 
     def merge_collapse(self):
         """Merge runs and keep the stack at a ratio like a
@@ -118,33 +96,32 @@ class TimsortState:
             - https://hg.python.org/cpython/file/tip/Objects/listsort.txt#l330
         """
 
-        lens = self.run_len
-        while self.stack_len > 1:
-            pivot = self.stack_len - 2
+        while self.stack_size > 1:
+            pivot = self.stack_size - 2
 
             # Consider the stack as having the lengths: A, B, C, D
             # if
             #     3+ runs on the stack and B <= C + D
             # or
             #     4+ runs on the stack and A <= C + B
-            if pivot > 0 and lens[pivot - 1] <= lens[pivot] + lens[pivot + 1] or \
-               pivot > 1 and lens[pivot - 2] <= lens[pivot] + lens[pivot - 1]:
+            if pivot > 0 and self.run_len[pivot - 1] <= self.run_len[pivot] + self.run_len[pivot + 1] or \
+               pivot > 1 and self.run_len[pivot - 2] <= self.run_len[pivot] + self.run_len[pivot - 1]:
 
                 # if B < D
-                if lens[pivot - 1] < lens[pivot + 1]:
+                if self.run_len[pivot - 1] < self.run_len[pivot + 1]:
                     pivot -= 1
 
             # else if C > B, no merges needed
-            elif pivot < 0 or lens[pivot] > lens[pivot + 1]:
+            elif pivot < 0 or self.run_len[pivot] > self.run_len[pivot + 1]:
                 break
 
             self.merge_at(pivot)
 
     def merge_force_collapse(self):
-        while self.stack_len > 1:
+        while self.stack_size > 1:
             # ensure descending len
             # B, + C
-            pivot = self.stack_len - 2
+            pivot = self.stack_size - 2
 
             if pivot > 0 and self.run_len[pivot - 1] < self.run_len[pivot + 1]:
                 # A, + B
@@ -153,9 +130,9 @@ class TimsortState:
             self.merge_at(pivot)
 
     def merge_at(self, pivot: int):
-        assert self.stack_len >= 2
+        assert self.stack_size >= 2
         assert pivot >= 0
-        assert pivot == self.stack_len - 2 or pivot == self.stack_len - 3
+        assert pivot == self.stack_size - 2 or pivot == self.stack_size - 3
 
         base1 = self.run_base[pivot]
         len1 = self.run_len[pivot]
@@ -169,12 +146,12 @@ class TimsortState:
 
         # if pivot == 3rd-last run slide index over
         # in this case pivot + 1 is the consumed run
-        if pivot == self.stack_len - 3:
+        if pivot == self.stack_size - 3:
             self.run_base[pivot + 1] = self.run_base[pivot + 2]
             self.run_len[pivot + 1] = self.run_len[pivot + 2]
 
         # consume last run on stack
-        self.stack_len -= 1
+        self.stack_size -= 1
 
         # index for the first element of r2 at r1
         r2_base_r1 = gallop_right(self.a[base2], self.a, base1, len1, 0)
@@ -325,7 +302,7 @@ class TimsortState:
 
         if len1 == 1:
             assert len2 > 0
-            self.__cp_arr(a, cr1, a, dst, len2)
+            self.__cp_arr(a, cr2, a, dst, len2)
             a[dst + len2] = tmp[cr1]
         elif len1 == 0:
             raise ContractBroken()
@@ -429,8 +406,8 @@ class TimsortState:
                     if len2 == 1:
                         raise SuperBreak()
 
-                    run2_wins = len2 - gallop_left(
-                        a[cr1], tmp, tmp_base, len2, len2 - 1)
+                    run2_wins = len2 - \
+                        gallop_left(a[cr1], tmp, tmp_base, len2, len2 - 1)
                     if run2_wins != 0:
                         dst -= run2_wins
                         cr2 -= run2_wins
