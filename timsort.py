@@ -1,7 +1,7 @@
 from typing import TypeVar
 
 
-from state import *
+from src.state import *
 from src.binary_insertion_sort import binary_insertion_sort
 from src.count_run_and_make_asc import count_run_and_make_asc
 from src.constants import *
