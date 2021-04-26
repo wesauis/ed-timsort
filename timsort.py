@@ -12,6 +12,7 @@ T = TypeVar('T')
 
 def timsort(a: list[T]) -> list[T]:
     _len = len(a)
+    assert a != None
 
     if _len < MIN_MERGE:
         # do a mergeless mini timsort
@@ -50,6 +51,8 @@ def timsort(a: list[T]) -> list[T]:
 
         lo += run_len
 
+    assert lo == _len
     tst.merge_force_collapse()
+    assert tst.stack_len == 1
 
     return a

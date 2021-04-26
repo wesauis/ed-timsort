@@ -8,6 +8,8 @@ def count_run_and_make_asc(a: list[T], lo: int, hi: int) -> int:
     """Finds a sequence of ordered values, make it ascending and
     returns the lenght of the run."""
 
+    assert lo < hi
+
     # end index of the run
     run_hi = lo + 1
     if run_hi >= hi:

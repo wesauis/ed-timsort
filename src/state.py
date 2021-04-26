@@ -14,8 +14,8 @@ class SuperBreak(Exception):
 
 
 class ContractBroken(Exception):
-    def __init__(self):
-        super("Comparison method violates its general contract!")
+    def __str__(self):
+        return "Comparison method violates its general contract!"
 
 
 class TimsortState:
@@ -74,6 +74,8 @@ class TimsortState:
     @staticmethod
     def __min_run(n: int) -> int:
         """Returns the min run len `k` for a array of size `n`."""
+
+        assert n > 0
 
         # count how many bits are set to one before `n >= MIN_MERGE`
         # each iteration the last bit of `n` is consumed
@@ -148,10 +150,16 @@ class TimsortState:
             self.merge_at(pivot)
 
     def merge_at(self, pivot: int):
+        assert self.stack_len >= 2
+        assert pivot >= 0
+        assert pivot == self.stack_len - 2 or pivot == self.stack_len - 3
+
         base1 = self.run_base[pivot]
         base2 = self.run_base[pivot + 1]
         len1 = self.run_len[pivot]
         len2 = self.run_len[pivot + 1]
+        assert len1 > 0 and len2 > 0
+        assert base1 + len1 == base2
 
         # save new len
         self.run_len[pivot] = len1 + len2
@@ -167,6 +175,7 @@ class TimsortState:
 
         # index for the first element of r2 at r1
         r2_base_r1 = gallop_right(self.a[base2], self.a, base1, len1, 0)
+        assert r2_base_r1 >= 0
 
         base1 += r2_base_r1
         len1 -= r2_base_r1
@@ -177,6 +186,7 @@ class TimsortState:
         # index for the last element of r1 at r2
         len2 = gallop_left(self.a[base1 + len1 - 1],
                            self.a, base2, len2, len2 - 1)
+        assert len2 >= 0
 
         if len2 == 0:
             return
@@ -188,6 +198,8 @@ class TimsortState:
             self.merge_hi(base1, len1, base2, len2)
 
     def merge_lo(self, base1: int, len1: int, base2: int, len2: int):
+        assert len1 > 0 and len2 > 0 and base1 + len1 == base2
+
         # local ref
         a = self.a
         tmp = self.ensure_tmp_capacity(len1)
@@ -222,6 +234,8 @@ class TimsortState:
 
                 # merge item by item until (if ever) a run wins consistently
                 while True:
+                    assert len1 > 1 and len2 > 0
+
                     if a[cr2] < tmp[cr1]:
                         a[dst] = a[cr2]
                         dst += 1
@@ -255,6 +269,8 @@ class TimsortState:
                 # if we leave too fast will be harder to enter again
                 # else will be easyer
                 while True:
+                    assert len1 > 1 and len2 > 0
+
                     run1_wins = gallop_right(a[cr2], tmp, cr1, len1, 0)
                     if run1_wins != 0:
                         self.__cp_arr(tmp, cr1, a, dst, run1_wins)
@@ -305,14 +321,19 @@ class TimsortState:
         self.min_galop = 1 if min_galop < 1 else min_galop
 
         if len1 == 1:
+            assert len2 > 0
             self.__cp_arr(a, cr1, a, dst, len2)
             a[dst + len2] = tmp[cr1]
         elif len1 == 0:
             raise ContractBroken()
         else:
+            assert len2 == 0
+            assert len1 > 1
             self.__cp_arr(tmp, cr1, a, dst, len1)
 
     def merge_hi(self, base1: int, len1: int, base2: int, len2: int):
+        assert len1 > 0 and len2 > 0 and base1 + len1 == base2
+
         # local ref
         a = self.a
         tmp = self.ensure_tmp_capacity(len2)
@@ -335,6 +356,8 @@ class TimsortState:
             self.__cp_arr(tmp, tmp_base, a, dst - (len2 - 1), len2)
             return
         if len2 == 1:
+            dst -= len1
+            cr1 -= len1
             self.__cp_arr(a, cr1 + 1, a, dst + 1, len1)
             a[dst] = tmp[cr2]
             return
@@ -348,6 +371,8 @@ class TimsortState:
 
                 # merge item by item until (if ever) a run wins consistently
                 while True:
+                    assert len1 > 0 and len2 > 1
+
                     if tmp[cr2] < a[cr1]:
                         a[dst] = a[cr1]
                         dst += 1
@@ -362,8 +387,8 @@ class TimsortState:
 
                     else:
                         a[dst] = tmp[cr2]
-                        dst += 1
-                        cr2 += 1
+                        dst -= 1
+                        cr2 -= 1
 
                         run1_wins = 0
                         run2_wins += 1
@@ -381,6 +406,8 @@ class TimsortState:
                 # if we leave too fast will be harder to enter again
                 # else will be easyer
                 while True:
+                    assert len1 > 0 and len2 > 1
+
                     run1_wins = len1 - \
                         gallop_right(tmp[cr2], a, base1, len1, len1 - 1)
                     if run1_wins != 0:
@@ -433,6 +460,7 @@ class TimsortState:
         self.min_galop = 1 if min_galop < 1 else min_galop
 
         if len2 == 1:
+            assert len1 > 0
             dst -= len1
             cr1 -= len1
             self.__cp_arr(a, cr1 + 1, a, dst + 1, len1)
@@ -440,6 +468,8 @@ class TimsortState:
         elif len2 == 0:
             raise ContractBroken()
         else:
+            assert len1 == 0
+            assert len2 > 0
             self.__cp_arr(tmp, tmp_base, a, dst - (len2 - 1), len2)
 
     def ensure_tmp_capacity(self, min_capacity: int) -> list[T]:
