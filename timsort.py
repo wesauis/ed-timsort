@@ -11,8 +11,11 @@ T = TypeVar('T')
 
 
 def timsort(a: list[T]) -> list[T]:
-    _len = len(a)
     assert a != None
+
+    _len = len(a)
+    if _len == 0:
+        return a
 
     if _len < MIN_MERGE:
         # do a mergeless mini timsort

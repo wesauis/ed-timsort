@@ -143,8 +143,11 @@ class TimsortState:
     def merge_force_collapse(self):
         while self.stack_len > 1:
             # ensure descending len
+            # B, + C
             pivot = self.stack_len - 2
+
             if pivot > 0 and self.run_len[pivot - 1] < self.run_len[pivot + 1]:
+                # A, + B
                 pivot -= 1
 
             self.merge_at(pivot)
@@ -155,8 +158,8 @@ class TimsortState:
         assert pivot == self.stack_len - 2 or pivot == self.stack_len - 3
 
         base1 = self.run_base[pivot]
-        base2 = self.run_base[pivot + 1]
         len1 = self.run_len[pivot]
+        base2 = self.run_base[pivot + 1]
         len2 = self.run_len[pivot + 1]
         assert len1 > 0 and len2 > 0
         assert base1 + len1 == base2
@@ -347,8 +350,8 @@ class TimsortState:
 
         # move last item of run2
         a[dst] = a[cr1]
-        dst += 1
-        cr1 += 1
+        dst -= 1
+        cr1 -= 1
 
         # see if it was all
         len1 -= 1
@@ -375,8 +378,8 @@ class TimsortState:
 
                     if tmp[cr2] < a[cr1]:
                         a[dst] = a[cr1]
-                        dst += 1
-                        cr1 += 1
+                        dst -= 1
+                        cr1 -= 1
 
                         run1_wins += 1
                         run2_wins = 0
@@ -414,7 +417,7 @@ class TimsortState:
                         dst -= run1_wins
                         cr1 -= run1_wins
                         len1 -= run1_wins
-                        self.__cp_arr(a, cr1, a, dst + 1, run1_wins)
+                        self.__cp_arr(a, cr1 + 1, a, dst + 1, run1_wins)
                         if len1 == 0:
                             raise SuperBreak()
 
@@ -426,7 +429,7 @@ class TimsortState:
                     if len2 == 1:
                         raise SuperBreak()
 
-                    run2_wins = gallop_left(
+                    run2_wins = len2 - gallop_left(
                         a[cr1], tmp, tmp_base, len2, len2 - 1)
                     if run2_wins != 0:
                         dst -= run2_wins
@@ -436,7 +439,7 @@ class TimsortState:
                         if len2 <= 1:
                             raise SuperBreak()
 
-                    a[dst] = tmp[cr1]
+                    a[dst] = a[cr1]
                     dst -= 1
                     cr1 -= 1
 

@@ -20,6 +20,8 @@ def gallop_left(key: T, a: list[T], base: int, range_len: int, hint: int):
         while offset < max_offset and key > a[base + hint + offset]:
             last_offset = offset
             offset = (offset * 2) + 1
+            if offset <= 0:
+                offset = max_offset
 
         if offset > max_offset:
             offset = max_offset
@@ -30,9 +32,11 @@ def gallop_left(key: T, a: list[T], base: int, range_len: int, hint: int):
     else:
         # gallop left until `a[base + hint - offset] < key <= a[base + hint - last_offset]`
         max_offset = hint + 1
-        while offset < max_offset and key <= a[base + hint + offset]:
+        while offset < max_offset and key <= a[base + hint - offset]:
             last_offset = offset
             offset = (offset * 2) + 1
+            if offset <= 0:
+                offset = max_offset
 
         if offset > max_offset:
             offset = max_offset
@@ -46,7 +50,7 @@ def gallop_left(key: T, a: list[T], base: int, range_len: int, hint: int):
     # approches the real index of the value
     last_offset += 1
     while last_offset < offset:
-        m = last_offset + int((offset - last_offset) / 2)
+        m = last_offset + (offset - last_offset) // 2
 
         if key > a[base + m]:
             last_offset = m + 1  # a[base + m] < key
@@ -68,10 +72,12 @@ def gallop_right(key: T, a: list[T], base: int, range_len: int, hint: int):
     # exponential search at the direction of the value
     if key < a[base + hint]:
         # gallop right until `a[base + hint + last_offset] < key <= a[base + hint + offset]`
-        max_offset = range_len - hint
-        while offset < max_offset and key > a[base + hint + offset]:
+        max_offset = hint + 1
+        while offset < max_offset and key < a[base + hint - offset]:
             last_offset = offset
             offset = (offset * 2) + 1
+            if offset <= 0:
+                offset = max_offset
 
         if offset > max_offset:
             offset = max_offset
@@ -82,27 +88,29 @@ def gallop_right(key: T, a: list[T], base: int, range_len: int, hint: int):
         offset = hint - tmp
     else:
         # gallop left until a[base + hint - offset] < key <= a[base + hint - last_offset]
-        max_offset = hint + 1
-        while offset < max_offset and key <= a[base + hint + offset]:
+        max_offset = range_len - hint
+        while offset < max_offset and key >= a[base + hint + offset]:
             last_offset = offset
             offset = (offset * 2) + 1
+            if offset <= 0:
+                offset = max_offset
 
         if offset > max_offset:
             offset = max_offset
 
         last_offset += hint
         offset += hint
-    assert -1 <= last_offset and last_offset < offset and offset < range_len
+    assert -1 <= last_offset and last_offset < offset and offset <= range_len
 
     # approches the real index of the value
     last_offset += 1
     while last_offset < offset:
-        m = last_offset + int((offset - last_offset) / 2)
+        m = last_offset + (offset - last_offset) // 2
 
-        if key > a[base + m]:
-            last_offset = m + 1  # a[base + m] < key
+        if key < a[base + m]:
+            offset = m
         else:
-            offset = m           # key <= a[base + m]
+            last_offset = m + 1
 
     assert last_offset == offset
     return offset
